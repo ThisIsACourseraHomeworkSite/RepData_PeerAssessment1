@@ -1,20 +1,81 @@
+#
 # Reproducible Research: Peer Assessment 1
-
+========================================================
 
 ## Loading and preprocessing the data
 
-
+```{r, echo = FALSE}
+options(digits = 7)
+options(warn = -1)
+library(ggplot2)
+```
+```{r, echo = TRUE}
+data = read.csv("activity.csv")
+data$date = as.Date(data$date)
+data_no_na = data[complete.cases(data),]
+```
 
 ## What is mean total number of steps taken per day?
 
+### The step taken on each day
 
+```{r}
+
+daysums = aggregate(data_no_na$steps, list (date = data_no_na$date), sum)
+hist(daysums$x, main = "Steps Per Day", xlab = "Steps", col = "green", breaks=8)
+```
+
+### The mean and median number of steps
+
+```{r}
+mean(daysums$x, na.rm=TRUE, ) 
+median(daysums$x, na.rm = TRUE)
+```
 
 ## What is the average daily activity pattern?
 
+### The average steps taken during each time interval
 
+```{r}
+interval_steps = aggregate(data_no_na$steps, list(interval = data_no_na$interval), mean)
+plot(interval_steps, type = 'l', ylab= "average steps", main = "Average Steps Per Time Interval")
+```
+
+### The interval with the highest average number of steps
+
+
+```{r}
+interval_steps$interval[interval_steps$x == max(interval_steps$x)]
+```
 
 ## Imputing missing values
 
+### NA values were replaced with the average for that time interval from the rest of the dataset
 
+### Steps per day using imputed values
+
+```{r}
+newdata = data.frame(steps = replace(data$steps, is.na(data$steps), interval_steps$x), 
+                     date = data$date, interval = data$interval)
+newdaysums = aggregate(newdata$steps, list (date = newdata$date), sum)
+hist(newdaysums$x, xlab = "Steps", col = "red", main = "Steps Per Day (imputed)", breaks = 8)
+```
+
+### Mean and median of imputed data set. The mean and the median are now the same. The mean is the same as the mean of the above data set, because NA values only existed for entire days; since NA values are average values for the entire data set, imputation effectively adds only an average day, which doesn't change the mean. Those average days also ended up being in the middle of the data set, which makes the median equal to the mean.
+
+```{r}
+mean(newdaysums$x)
+median(newdaysums$x)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### This plot shows the average daily activity patterns for weekdays and weekends. There is cleary more activity on weekdays.
+
+```{r}
+newdata$weekday = weekdays(newdata$date)
+newdata$dayclass <- ifelse(newdata$weekday == "Sunday" | newdata$weekday == "Saturday", c("weekend"), c("weekday"))
+intervalsum = aggregate(newdata$steps, list (interval = newdata$interval, dayclass = newdata$dayclass), sum)
+qplot(interval, x, data = intervalsum, facets = dayclass ~ ., geom = "line", )
+
+```
